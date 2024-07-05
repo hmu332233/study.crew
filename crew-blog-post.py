@@ -1,6 +1,7 @@
 import os
-os.environ["SERPER_API_KEY"] = ""  # serper.dev API key
-os.environ["OPENAI_API_KEY"] = ""
+os.environ["SERPER_API_KEY"] = os.getenv('SERPER_API_KEY')
+os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
+os.environ["OPENAI_MODEL_NAME"]="gpt-4o"
 
 from crewai import Crew, Agent, Task, Process
 from crewai_tools import SerperDevTool
@@ -36,6 +37,20 @@ writer = Agent(
   allow_delegation=False
 )
 
+# 한국어 번역가 에이전트 정의
+translator = Agent(
+  role='Translator',
+  goal='Translate the final report into Korean',
+  verbose=True,
+  memory=True,
+  backstory=(
+    "Fluent in both English and Korean, you have a knack for translating"
+    "technical content accurately while maintaining readability and nuance."
+  ),
+  tools=[],
+  allow_delegation=False
+)
+
 # Research task
 research_task = Task(
   description=(
@@ -63,10 +78,23 @@ write_task = Task(
   output_file='new-blog-post.md'  # Example of output customization
 )
 
-# Forming the tech-focused crew with some enhanced configurations
+# 번역 작업 정의
+translate_task = Task(
+  description=(
+    "Translate the final report and article into Korean."
+    "Ensure that the translation maintains the original meaning and readability."
+  ),
+  expected_output='한국어 번역 블로그 포스트',
+  tools=[],
+  agent=translator,
+  async_execution=False,
+  input_files=['new-blog-post.md']
+)
+
+# 기술 중심의 팀 구성
 crew = Crew(
-  agents=[researcher, writer],
-  tasks=[research_task, write_task],
+  agents=[researcher, writer, translator],
+  tasks=[research_task, write_task, translate_task],
   process=Process.sequential,  # Optional: Sequential task execution is default
   memory=True,
   cache=True,
@@ -74,6 +102,6 @@ crew = Crew(
   share_crew=True
 )
 
-# Starting the task execution process with enhanced feedback
-result = crew.kickoff(inputs={'topic': 'hmu332233 이라는 사람'})
+# 작업 실행 프로세스 시작
+result = crew.kickoff(inputs={'topic': 'gpt5에 대한 소식'})
 print(result)
